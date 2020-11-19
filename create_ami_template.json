@@ -1,0 +1,93 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Create AMI from selection EC2 instance",
+
+  "Parameters" : {
+    "InstanceId": {
+      "Type": "List<AWS::EC2::Instance::Id>",
+      "Description": "Target EC2 intance to create image",
+      "ConstraintDescription": "Target EC2 to create image"
+    }
+  },
+
+  "Resources": {
+    "AMI": {
+      "Type": "Custom::AMI",
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt": ["AMIFunction", "Arn"]},
+        "InstanceId": { "Ref": "InstanceId"}
+      }
+    },
+
+    "AMIFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.handler",
+        "Role": {"Fn::GetAtt": ["LambdaExecutionRole", "Arn"]},
+        "Code": {
+          "ZipFile": { "Fn::Join": ["\n", [
+            "import boto3",
+            "import cfnresponse",
+            "def handler(event, context):",
+            "  ec2 = boto3.resource('ec2')",
+            "  instance_id = event['ResourceProperties']['InstanceId']",
+            "  print(instance_id)",
+            "  print(event)",
+            "  instance = ec2.Instance(instance_id[0])",
+            "  image = instance.create_image(Name='imdfeage_froreem_lambda')",
+            "  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'image_id': image.id})"
+            ]]
+          }
+        },
+        "Runtime": "python3.8",
+        "Timeout": "60"
+      }
+    },
+
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": ["lambda.amazonaws.com"]
+            },
+            "Action": ["sts:AssumeRole"]
+          }
+        },
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "EC2Policy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Action": [
+                  "ec2:DescribeInstances",
+                  "ec2:DescribeImages",
+                  "ec2:CreateImage"
+                ],
+                "Resource": ["*"]
+               }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+
+  "Outputs" : {
+    "AmiID": {
+      "Value": { "Fn::GetAtt": ["AMI", "image_id"] }
+    }
+  }
+}
