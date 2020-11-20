@@ -8,6 +8,13 @@
       "Type": "List<AWS::EC2::Instance::Id>",
       "Description": "Target EC2 intance to create image",
       "ConstraintDescription": "Target EC2 to create image"
+    },
+    "AMIName": {
+      "Type": "String",
+      "Description": "Name for AMI creation",
+      "ConstraintDescription": "Name for image",
+      "MinLength": "6",
+      "MaxLength": "64"
     }
   },
 
@@ -16,7 +23,8 @@
       "Type": "Custom::AMI",
       "Properties": {
         "ServiceToken": { "Fn::GetAtt": ["AMIFunction", "Arn"]},
-        "InstanceId": { "Ref": "InstanceId"}
+        "InstanceId": { "Ref": "InstanceId"},
+        "ImageName": { "Ref": "AMIName" }
       }
     },
 
@@ -32,10 +40,11 @@
             "def handler(event, context):",
             "  ec2 = boto3.resource('ec2')",
             "  instance_id = event['ResourceProperties']['InstanceId']",
+            "  image_name = event['ResourceProperties']['ImageName']",
             "  print(instance_id)",
             "  print(event)",
             "  instance = ec2.Instance(instance_id[0])",
-            "  image = instance.create_image(Name='imdfeage_froreem_lambda')",
+            "  image = instance.create_image(Name=image_name)",
             "  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'image_id': image.id})"
             ]]
           }
