@@ -28,21 +28,11 @@
       "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters"
     },
 
-    "DBPassword": {
-      "NoEcho": "true",
-      "Description": "Root password for MySQL",
-      "Type": "String",
-      "MinLength": "1",
-      "MaxLength": "41",
-      "AllowedPattern": "[a-zA-Z0-9]*",
-      "ConstraintDescription": "must contain only alphanumeric characters"
-    },
-
     "DBRootPassword": {
       "NoEcho": "true",
       "Description": "Password for mysql access",
       "Type": "String",
-      "MinLength": "1",
+      "MinLength": "8",
       "MaxLength": "41",
       "AllowedPattern": "[a-zA-Z0-9]*",
       "ConstraintDescription": "must contain only alphanumeric characters"
@@ -209,12 +199,43 @@
   },
 
   "Resources": {
+    "DBCluster": {
+      "Type": "AWS::RDS::DBCluster",
+      "Properties": {
+        "Engine": "aurora-mysql",
+        "EngineVersion": "5.7.mysql_aurora.2.04.7",
+        "MasterUsername": { "Ref": "DBUser" },
+        "MasterUserPassword": { "Ref": "DBRootPassword" },
+        "VpcSecurityGroupIds": [{ "Fn::GetAtt": ["DBSecurityGroup", "GroupId"]}]
+      }
+    },
+
+    "DBInstance": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "DBClusterIdentifier": { "Ref": "DBCluster" },
+        "DBInstanceClass": "db.t2.medium",
+        "Engine": "aurora-mysql"
+      }
+    },
+
+    "DBSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable access to SQL connect",
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": "3306", "ToPort": "3306", "SourceSecurityGroupId": { "Fn::GetAtt": ["WebServerSecurityGroup", "GroupId"] }}
+        ]
+      }
+    },
+
     "WebServer": {
       "Type": "AWS::EC2::Instance",
+      "DependsOn": "DBInstance",
       "Metadata": {
         "AWS::CloudFormation::Init": {
           "configSets": {
-            "full_install": ["install_cfn", "install_ruby_2_5_1", "install_mysql", "config_mysql", "install_application"]
+            "full_install": ["install_cfn", "install_ruby_2_5_1", "install_application"]
           },
 
           "install_cfn": {
@@ -289,52 +310,13 @@
             }
           },
 
-          "install_mysql": {
+          "install_application": {
             "packages": {
               "yum": {
-                "mysql": [],
-                "mysql-server": [],
-                "mysql-devel": [],
-                "mysql-libs": []
+                "mysql-devel": []
               }
+
             },
-
-            "files": {
-              "/tmp/setup.mysql": {
-                "content": { "Fn::Join": ["", [
-                  "CREATE USER '", { "Ref": "DBUser" }, "'@'localhost' IDENTIFIED BY '", { "Ref": "DBPassword" }, "';\n",
-                  "GRANT ALL ON ", { "Ref": "DBName" }, ".* TO '", { "Ref": "DBUser" }, "'@'localhost';\n",
-                  "FLUSH PRIVILEGES;\n"
-                ]]},
-                "mode": "000400",
-                "owner": "root",
-                "group": "root"
-              }
-            },
-            "services": {
-              "sysvinit": {
-                "mysqld": { "enabled": "true", "ensureRunning": "true" }
-              }
-            }
-          },
-
-          "config_mysql": {
-            "commands": {
-              "01_set_mysql_root_password": {
-                "command": { "Fn::Join": ["", ["mysqladmin -u root password '", { "Ref": "DBRootPassword" }, "'"]] },
-                "test": { "Fn::Join": ["", ["$(mysql ", { "Ref": "DBName" }, " -u root --password='", { "Ref": "DBRootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]] }
-              },
-              "02_create_database": {
-                "command": { "Fn::Join": ["", ["mysql -u root --password='", { "Ref": "DBRootPassword" }, "' < /tmp/setup.mysql"]] },
-                "test": { "Fn::Join": ["", ["$(mysql ", { "Ref": "DBName" }, " -u root --password='", { "Ref": "DBRootPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]] }
-              },
-              "03_cleanup": {
-                "command": "rm /tmp/setup.mysql"
-              }
-            }
-          },
-
-          "install_application": {
             "files": {
               "/tmp/database.yml": {
                 "content": { "Fn::Join": ["", [
@@ -345,8 +327,8 @@
                   "  pool: 5\n",
                   "  database: ", { "Ref": "DBName" }, "\n",
                   "  username: ", { "Ref": "DBUser" }, "\n",
-                  "  password: ", { "Ref": "DBPassword" }, "\n",
-                  "  socket: /var/lib/mysql/mysql.sock"
+                  "  password: ", { "Ref": "DBRootPassword" }, "\n",
+                  "  host: ", { "Fn::GetAtt": ["DBCluster", "Endpoint.Address"] }, "\n"
                 ]] },
                 "mode": "000400",
                 "owner": "ec2-user",
