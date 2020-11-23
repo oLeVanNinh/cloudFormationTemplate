@@ -4,18 +4,40 @@
   "Description" : "AWS CloudFormation Sample Template ELBWithLockedDownAutoScaledInstances: Create a load balanced, Auto Scaled sample website where the instances are locked down to only accept traffic from the load balancer. This example creates an Auto Scaling group behind a load balancer with a simple health check. The web site is available on port 80, however, the instances can be configured to listen on any port (8888 by default). **WARNING** This template creates one or more Amazon EC2 instances and an Application Load Balancer. You will be billed for the AWS resources used if you create a stack from this template.",
 
   "Parameters" : {
-    "InstanceId": {
-      "Type": "List<AWS::EC2::Instance::Id>",
-      "Description": "Target EC2 intance to create image",
-      "ConstraintDescription": "Target EC2 to create image"
-    },
-
     "AMIName": {
       "Type": "String",
       "Description": "Name for AMI creation",
       "ConstraintDescription": "Name for image",
       "MinLength": "6",
       "MaxLength": "64"
+    },
+
+    "DBName": {
+      "Default": "MyDatabase",
+      "Description": "MySQL database name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64"
+    },
+
+    "DBUser": {
+      "NoEcho": "true",
+      "Description": "Username for MySQL database access",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters"
+    },
+
+    "DBRootPassword": {
+      "NoEcho": "true",
+      "Description": "Password for mysql access",
+      "Type": "String",
+      "MinLength": "8",
+      "MaxLength": "41",
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "ConstraintDescription": "must contain only alphanumeric characters"
     },
 
     "VpcId" : {
@@ -193,11 +215,234 @@
    },
 
   "Resources": {
+    "DBCluster": {
+      "Type": "AWS::RDS::DBCluster",
+      "Properties": {
+        "Engine": "aurora-mysql",
+        "EngineVersion": "5.7.mysql_aurora.2.04.7",
+        "MasterUsername": { "Ref": "DBUser" },
+        "MasterUserPassword": { "Ref": "DBRootPassword" },
+        "VpcSecurityGroupIds": [{ "Fn::GetAtt": ["DBSecurityGroup", "GroupId"]}]
+      }
+    },
+
+    "DBInstance": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "DBClusterIdentifier": { "Ref": "DBCluster" },
+        "DBInstanceClass": "db.t2.medium",
+        "Engine": "aurora-mysql"
+      }
+    },
+
+    "DBSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable access to SQL connect",
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": "3306", "ToPort": "3306", "SourceSecurityGroupId": { "Fn::GetAtt": ["InstanceSecurityGroup", "GroupId"] }}
+        ]
+      }
+    },
+
+    "WebServer": {
+      "Type": "AWS::EC2::Instance",
+      "DependsOn": "DBInstance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "full_install": ["install_cfn", "install_ruby_2_5_1", "install_application"]
+          },
+
+          "install_cfn": {
+            "files": {
+              "/etc/cfn/cfn-hup.conf": {
+                "content": { "Fn::Join": ["", [
+                  "[main]\n",
+                  "stack=", { "Ref": "AWS::StackId" }, "\n",
+                  "region=", { "Ref": "AWS::Region" }, "\n"
+                ]]},
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": { "Fn::Join": ["", [
+                  "[cfn-auto-reloader-hook]\n",
+                  "triggers=post.update\n",
+                  "path=Resources.WebServer.Metadata.AWS::CloudFormation::Init\n",
+                  "action=/opt/aws/bin/cfn-init -v",
+                  "  --stack ", { "Ref": "AWS::StackName" },
+                  "  --resource WebServer",
+                  "  --configsets full_install",
+                  "  --region ", { "Ref": "AWS::Region" }, "\n",
+                  "runas=root\n"
+                ]] },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              }
+            },
+
+            "services": {
+              "sysvinit": {
+                "cfn-hup": { "enabled":  "true", "ensureRunning": "true", "files": ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"] }
+              }
+            }
+          },
+
+          "install_ruby_2_5_1": {
+            "files": {
+              "/tmp/install_ruby": {
+                "content": {
+                  "Fn::Join": ["\n",
+                    [
+                      "#!/bin/bash",
+                      "sudo su - ec2-user",
+                      "curl -sSL https://get.rvm.io | bash",
+                      "source /etc/profile.d/rvm.sh",
+                      "rvm install 2.5.1",
+                      "rvm --default use 2.5.1",
+                      "curl --silent --location https://rpm.nodesource.com/setup_12.x | sudo bash -",
+                      "sudo yum install -y nodejs yarn git",
+                      "gem install rails -v 5.2.1"
+                    ]
+                  ]
+                },
+                "mode": "000500",
+                "owner": "ec2-user",
+                "group": "ec2-user"
+              }
+            },
+            "packages": {
+              "yum": {
+                "ruby-devel": []
+              }
+            },
+            "commands": {
+              "01_install_ruby": {
+                "command": "/tmp/install_ruby > /var/log/install_ruby.log"
+              }
+            }
+          },
+
+          "install_application": {
+            "packages": {
+              "yum": {
+                "mysql-devel": []
+              }
+
+            },
+            "files": {
+              "/tmp/database.yml": {
+                "content": { "Fn::Join": ["", [
+                  "development:\n",
+                  "  adapter: mysql2\n",
+                  "  encoding: utf8\n",
+                  "  reconnect: false\n",
+                  "  pool: 5\n",
+                  "  database: ", { "Ref": "DBName" }, "\n",
+                  "  username: ", { "Ref": "DBUser" }, "\n",
+                  "  password: ", { "Ref": "DBRootPassword" }, "\n",
+                  "  host: ", { "Fn::GetAtt": ["DBCluster", "Endpoint.Address"] }, "\n"
+                ]] },
+                "mode": "000400",
+                "owner": "ec2-user",
+                "group": "ec2-user"
+              },
+              "/tmp/install_application": {
+                "content": { "Fn::Join": ["", [
+                  "#!/bin/bash -e\n",
+                  "source /etc/profile.d/rvm.sh\n",
+                  "echo $(whoami) \n",
+                  "rvm use 2.5.1\n",
+                  "export HOME=/home/ec2-user\n",
+                  "export PATH=$PATH:/usr/local/bin\n",
+                  "cd /home/ec2-user\n",
+
+                  "# Kill the rails server if it is running to allow update\n",
+                  "if pgrep ruby &> /dev/null; then pkill -TERM ruby; fi\n",
+
+                  "rails new sample -d mysql --skip-spring --skip-bundle --force\n",
+                  "cd /home/ec2-user/sample\n",
+                  "sed -i 's/^# \\(.*therubyracer.*$\\)/\\1/' Gemfile\n",
+                  "bundle install\n",
+                  "rails g scaffold Note title:string body:text --force\n",
+                  "cp /tmp/database.yml config\n",
+                  "rails db:create\n",
+                  "rails db:migrate\n"
+                ]] },
+                "mode": "000500",
+                "owner": "ec2-user",
+                "group": "ec2-user"
+              },
+              "/home/ec2-user/start-application": {
+                "content": { "Fn::Join": ["", [
+                  "#!/bin/bash -e\n",
+                  "source /etc/profile.d/rvm.sh\n",
+                  "rvm use 2.5.1\n",
+                  "export HOME=/home/ec2-user\n",
+                  "export PATH=$PATH:/usr/local/bin\n",
+                  "cd /home/ec2-user/sample\n",
+                  "rails s -b 0.0.0.0 -p 80 -d"
+                ]] },
+                "mode": "000500",
+                "owner": "ec2-user",
+                "group": "ec2-user"
+              }
+            },
+            "commands": {
+              "01_install_application": {
+                "command": "/tmp/install_application > /var/log/install_application.log"
+              },
+              "02_configure_reboot": {
+                "command": "echo /home/ec2-user/start-application >> /etc/rc.local"
+              },
+              "03_start_application": {
+                "command": "/home/ec2-user/start-application"
+              },
+              "04_cleanup": {
+                "command": "rm /tmp/install_application"
+              }
+            }
+          }
+        }
+      },
+
+      "Properties": {
+        "ImageId": { "Fn::FindInMap": [ "AWSRegionArch2AMI", { "Ref": "AWS::Region" },
+                          { "Fn::FindInMap": ["AWSInstanceType2Arch", { "Ref": "InstanceType" }, "Arch"] }] },
+        "InstanceType": { "Ref": "InstanceType" },
+        "SecurityGroupIds": [ { "Fn::GetAtt": ["InstanceSecurityGroup", "GroupId"] } ],
+        "KeyName": { "Ref": "KeyName" },
+        "UserData": { "Fn::Base64": { "Fn::Join": ["", [
+          "#!/bin/bash -xe\n",
+          "yum update -y aws-cfn-bootstrap\n",
+          "/opt/aws/bin/cfn-init -v ",
+          "  --stack ", { "Ref": "AWS::StackId" },
+          "  --resource WebServer ",
+          "  --configsets full_install",
+          "  --region ", { "Ref": "AWS::Region" }, "\n",
+          "/opt/aws/bin/cfn-signal -e $? ",
+          "  --stack ", { "Ref": "AWS::StackId" },
+          "  --resource WebServer ",
+          "  --region ", { "Ref": "AWS::Region" }, "\n"
+        ]]}}
+      },
+
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Timeout": "PT30M"
+        }
+      }
+    },
+
     "AMI": {
       "Type": "Custom::AMI",
       "Properties": {
         "ServiceToken": { "Fn::GetAtt": ["AMIFunction", "Arn"]},
-        "InstanceId": { "Ref": "InstanceId"},
+        "InstanceId": { "Ref": "WebServer"},
         "ImageName": { "Ref": "AMIName" }
       }
     },
@@ -212,14 +457,17 @@
             "import boto3",
             "import cfnresponse",
             "def handler(event, context):",
-            "  ec2 = boto3.resource('ec2')",
-            "  instance_id = event['ResourceProperties']['InstanceId']",
-            "  image_name = event['ResourceProperties']['ImageName']",
-            "  print(instance_id)",
-            "  print(event)",
-            "  instance = ec2.Instance(instance_id[0])",
-            "  image = instance.create_image(Name=image_name)",
-            "  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'image_id': image.id})"
+            "  try:",
+            "    ec2 = boto3.resource('ec2')",
+            "    instance_id = event['ResourceProperties']['InstanceId']",
+            "    image_name = event['ResourceProperties']['ImageName']",
+            "    print(instance_id)",
+            "    print(event)",
+            "    instance = ec2.Instance(instance_id)",
+            "    image = instance.create_image(Name=image_name)",
+            "    cfnresponse.send(event, context, cfnresponse.SUCCESS, {'image_id': image.id})",
+            "  except Exception as e:",
+            "    cfnresponse.send(event, context, cfnresponse.FAILED), {}"
             ]]
           }
         },
@@ -345,6 +593,9 @@
         "Port": 80,
         "Protocol": "HTTP",
         "UnhealthyThresholdCount": 5,
+        "Targets": [{
+          "Id": { "Ref": "WebServer" }
+        }],
         "VpcId": {"Ref": "VpcId"}
       }
     },
