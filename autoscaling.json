@@ -456,6 +456,7 @@
           "ZipFile": { "Fn::Join": ["\n", [
             "import boto3                                                                           ",
             "import cfnresponse                                                                     ",
+            "import time                                                                            ",
             "def handler(event, context):                                                           ",
             "  try:                                                                                 ",
             "    ec2 = boto3.resource('ec2')                                                        ",
@@ -467,7 +468,8 @@
             "    image = instance.create_image(Name=image_name)                                     ",
             "    resolved_image(image, event, context)                                              ",
             "  except Exception as e:                                                               ",
-            "    cfnresponse.send(event, context, cfnresponse.FAILED, {'error': e})                 ",
+            "    print(e)                                                                           ",
+            "    cfnresponse.send(event, context, cfnresponse.FAILED, {'error': 'error'})           ",
             "                                                                                       ",
             "def resolved_image(image, event, context):                                             ",
             "  counter = 0                                                                          ",
@@ -478,11 +480,12 @@
             "    time.sleep(step)                                                                   ",
             "    counter += step                                                                    ",
             "    image.reload()                                                                     ",
-            "      if image.state == 'available':                                                   ",
-            "        cfnresponse.send(event, context, cfnresponse.SUCCESS, {'image_id': image.id})  ",
-            "        break                                                                          ",
-            "    if image.state != 'available':                                                     ",
-            "      cfnresponse.send(event, context, cfnresponse.FAILED, {'error': e})               "
+            "    if image.state == 'available':                                                     ",
+            "      cfnresponse.send(event, context, cfnresponse.SUCCESS, {'image_id': image.id})    ",
+            "      break                                                                            ",
+            "                                                                                       ",
+            "  if image.state != 'available':                                                       ",
+            "    cfnresponse.send(event, context, cfnresponse.FAILED, {'error': 'Timeout'})         "
             ]]
           }
         },
