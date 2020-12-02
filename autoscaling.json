@@ -939,7 +939,7 @@
     "ApplicationLoadBalancer": {
       "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "Properties": {
-        "Subnets":[{ "Ref": "PrivateSubnetA" }, { "Ref": "PrivateSubnetB" }, { "Ref": "PrivateSubnetC" }],
+        "Subnets":[{ "Ref": "PublicSubnetA" }, { "Ref": "PublicSubnetB" }, { "Ref": "PublicSubnetC" }],
         "SecurityGroups": [{"Ref": "ALBSecurityGroup"}]
       }
     },
