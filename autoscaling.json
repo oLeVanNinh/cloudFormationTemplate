@@ -593,6 +593,35 @@
       }
     },
 
+    "BastionHostSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable SSH access",
+        "VpcId": { "Ref": "VPC" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": "22", "ToPort": "22", "CidrIp": { "Ref": "SSHLocation" }}
+        ]
+      }
+    },
+
+    "BastionHost": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": { "Fn::FindInMap": [ "AWSRegionArch2AMI", { "Ref": "AWS::Region" },
+          { "Fn::FindInMap": ["AWSInstanceType2Arch", { "Ref": "InstanceType" }, "Arch"] }] },
+        "InstanceType": "t2.micro",
+        "KeyName": { "Ref": "KeyName" },
+        "SubnetId": { "Ref": "PublicSubnetA" },
+        "SecurityGroupIds": [ {"Fn::GetAtt": ["BastionHostSecurityGroup", "GroupId"]}]
+      },
+
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Timeout": "PT30M"
+        }
+      }
+    },
+
     "WebServer": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "DBInstance",
