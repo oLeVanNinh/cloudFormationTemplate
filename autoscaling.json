@@ -214,7 +214,8 @@
       "Properties": {
         "VpcId": { "Ref": "VPC" },
         "CidrBlock": "10.0.0.0/24",
-        "AvailabilityZone": "us-east-1a"
+        "AvailabilityZone": "us-east-1a",
+        "MapPublicIpOnLaunch": true
       }
     },
 
@@ -223,7 +224,8 @@
       "Properties": {
         "VpcId": { "Ref": "VPC" },
         "CidrBlock": "10.0.1.0/24",
-        "AvailabilityZone": "us-east-1b"
+        "AvailabilityZone": "us-east-1b",
+        "MapPublicIpOnLaunch": true
       }
     },
 
@@ -232,7 +234,8 @@
       "Properties": {
         "VpcId": { "Ref": "VPC" },
         "CidrBlock": "10.0.2.0/24",
-        "AvailabilityZone": "us-east-1c"
+        "AvailabilityZone": "us-east-1c",
+        "MapPublicIpOnLaunch": true
       }
     },
 
@@ -612,7 +615,15 @@
         "InstanceType": "t2.micro",
         "KeyName": { "Ref": "KeyName" },
         "SubnetId": { "Ref": "PublicSubnetA" },
-        "SecurityGroupIds": [ {"Fn::GetAtt": ["BastionHostSecurityGroup", "GroupId"]}]
+        "SecurityGroupIds": [ {"Fn::GetAtt": ["BastionHostSecurityGroup", "GroupId"]}],
+        "UserData": { "Fn::Base64": { "Fn::Join": ["", [
+          "#!/bin/bash -xe\n",
+          "yum update -y aws-cfn-bootstrap\n",
+          "/opt/aws/bin/cfn-signal -e 0 ",
+          "  --stack ", { "Ref": "AWS::StackId" },
+          "  --resource BastionHost ",
+          "  --region ", { "Ref": "AWS::Region" }, "\n"
+        ]]}}
       },
 
       "CreationPolicy": {
