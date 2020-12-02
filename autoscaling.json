@@ -40,24 +40,11 @@
       "ConstraintDescription": "must contain only alphanumeric characters"
     },
 
-    "VpcId" : {
-      "Type" : "AWS::EC2::VPC::Id",
-      "Description" : "VpcId of your existing Virtual Private Cloud (VPC)",
-      "ConstraintDescription" : "must be the VPC Id of an existing Virtual Private Cloud."
-    },
-
-    "Subnets" : {
-      "Type" : "List<AWS::EC2::Subnet::Id>",
-      "Description" : "The list of SubnetIds in your Virtual Private Cloud (VPC)",
-      "ConstraintDescription" : "must be a list of at least two existing subnets associated with at least two different availability zones. They should be residing in the selected Virtual Private Cloud."
-    },
-
     "InstanceType" : {
       "Description" : "WebServer EC2 instance type",
       "Type" : "String",
       "Default" : "t2.small",
-      "AllowedValues" : [ "t1.micro", "t2.nano", "t2.micro", "t2.small", "t2.medium", "t2.large", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge", "m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge", "m4.10xlarge", "c1.medium", "c1.xlarge", "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge", "c4.large", "c4.xlarge", "c4.2xlarge", "c4.4xlarge", "c4.8xlarge", "g2.2xlarge", "g2.8xlarge", "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge", "i2.xlarge", "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "d2.xlarge", "d2.2xlarge", "d2.4xlarge", "d2.8xlarge", "hi1.4xlarge", "hs1.8xlarge", "cr1.8xlarge", "cc2.8xlarge", "cg1.4xlarge"]
-,
+      "AllowedValues" : [ "t1.micro", "t2.nano", "t2.micro", "t2.small", "t2.medium", "t2.large", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge", "m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge", "m4.10xlarge", "c1.medium", "c1.xlarge", "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge", "c4.large", "c4.xlarge", "c4.2xlarge", "c4.4xlarge", "c4.8xlarge", "g2.2xlarge", "g2.8xlarge", "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge", "i2.xlarge", "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "d2.xlarge", "d2.2xlarge", "d2.4xlarge", "d2.8xlarge", "hi1.4xlarge", "hs1.8xlarge", "cr1.8xlarge", "cc2.8xlarge", "cg1.4xlarge"],
       "ConstraintDescription" : "must be a valid EC2 instance type."
     },
 
@@ -215,6 +202,365 @@
    },
 
   "Resources": {
+    "VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16"
+      }
+    },
+
+    "PublicSubnetA": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.0.0/24",
+        "AvailabilityZone": "us-east-1a"
+      }
+    },
+
+    "PublicSubnetB": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.1.0/24",
+        "AvailabilityZone": "us-east-1b"
+      }
+    },
+
+    "PublicSubnetC": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.2.0/24",
+        "AvailabilityZone": "us-east-1c"
+      }
+    },
+
+    "PrivateSubnetA": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.4.0/24",
+        "AvailabilityZone": "us-east-1a"
+      }
+    },
+
+    "PrivateSubnetB": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.5.0/24",
+        "AvailabilityZone": "us-east-1b"
+      }
+    },
+
+    "PrivateSubnetC": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.6.0/24",
+        "AvailabilityZone": "us-east-1c"
+      }
+    },
+
+    "PrivateDBSubnetA": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.8.0/24",
+        "AvailabilityZone": "us-east-1a"
+      }
+    },
+
+    "PrivateDBSubnetB": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.9.0/24",
+        "AvailabilityZone": "us-east-1b"
+      }
+    },
+
+    "PrivateDBSubnetC": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": "10.0.10.0/24",
+        "AvailabilityZone": "us-east-1c"
+      }
+    },
+
+    "VPCInternetGateway": {
+      "Type": "AWS::EC2::InternetGateway"
+    },
+
+    "VpcGatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "InternetGatewayId": { "Ref": "VPCInternetGateway" },
+        "VpcId": { "Ref": "VPC" }
+      }
+    },
+
+    "PublicRT": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" }
+      }
+    },
+
+    "PublicRoute": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": { "Ref": "PublicRT" },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": { "Ref": "VPCInternetGateway" }
+      }
+    },
+
+    "PublicARouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PublicRT" },
+        "SubnetId": { "Ref": "PublicSubnetA" }
+      }
+    },
+
+    "PublicBRouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PublicRT" },
+        "SubnetId": { "Ref": "PublicSubnetB" }
+      }
+    },
+
+    "PublicCRouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PublicRT" },
+        "SubnetId": { "Ref": "PublicSubnetC" }
+      }
+    },
+
+    "NetworkAclPublic": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" }
+      }
+    },
+
+    "NetworkAclPrivate": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPublicA": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPublic" },
+        "SubnetId": { "Ref": "PublicSubnetA" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPublicB": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPublic" },
+        "SubnetId": { "Ref": "PublicSubnetB" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPublicC": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPublic" },
+        "SubnetId": { "Ref": "PublicSubnetC" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPrivateA": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "SubnetId": { "Ref": "PrivateSubnetA" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPrivateB": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "SubnetId": { "Ref": "PrivateSubnetB" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPrivateC": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "SubnetId": { "Ref": "PrivateSubnetC" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPrivateDBA": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "SubnetId": { "Ref": "PrivateDBSubnetA" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPrivateDBB": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "SubnetId": { "Ref": "PrivateDBSubnetB" }
+      }
+    },
+
+    "SubnetNetworkAclAssociationPrivateDBC": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "SubnetId": { "Ref": "PrivateDBSubnetC" }
+      }
+    },
+
+    "NetworkAclEntryPublicInAllowAll": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPublic" },
+        "RuleNumber": 99,
+        "Protocol": -1,
+        "RuleAction": "allow",
+        "Egress": false,
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+
+    "NetworkAclEntryPublicOutAllowAll": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPublic" },
+        "RuleNumber": 99,
+        "Protocol": -1,
+        "RuleAction": "allow",
+        "Egress": true,
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+
+    "NetworkAclEntryInPrivateAllowVPC": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "RuleNumber": 99,
+        "Protocol": -1,
+        "RuleAction": "allow",
+        "Egress": false,
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+
+    "NetworkAclEntryOutPrivateAllowVPC": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": { "Ref": "NetworkAclPrivate" },
+        "RuleNumber": 99,
+        "Protocol": -1,
+        "RuleAction": "allow",
+        "Egress": true,
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+
+    "NatElasticIP": {
+      "Type": "AWS::EC2::EIP"
+    },
+
+    "NATGateway": {
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "AllocationId": { "Fn::GetAtt": ["NatElasticIP", "AllocationId"] },
+        "SubnetId": { "Ref": "PublicSubnetA" }
+      }
+    },
+
+    "PrivateRT": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" }
+      }
+    },
+
+    "PrivateRoute": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": { "Ref": "PrivateRT" },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": { "Ref": "NATGateway" }
+      }
+    },
+
+    "PrivateARouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PrivateRT" },
+        "SubnetId": { "Ref": "PrivateSubnetA" }
+      }
+    },
+
+    "PrivateBRouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PrivateRT" },
+        "SubnetId": { "Ref": "PrivateSubnetB" }
+      }
+    },
+
+    "PrivateCRouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PrivateRT" },
+        "SubnetId": { "Ref": "PrivateSubnetC" }
+      }
+    },
+
+    "PrivateDBARouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PrivateRT" },
+        "SubnetId": { "Ref": "PrivateDBSubnetA" }
+      }
+    },
+
+    "PrivateDBBRouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PrivateRT" },
+        "SubnetId": { "Ref": "PrivateDBSubnetB" }
+      }
+    },
+
+    "PrivateDBCRouteAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": { "Ref": "PrivateRT" },
+        "SubnetId": { "Ref": "PrivateDBSubnetC" }
+      }
+    },
+
+    "DBSubnetGroup": {
+      "Type": "AWS::RDS::DBSubnetGroup",
+      "Properties": {
+        "DBSubnetGroupName": "rdssubnet",
+        "DBSubnetGroupDescription": "Private group subnet for db",
+        "SubnetIds": [{ "Ref": "PrivateDBSubnetA"}, { "Ref": "PrivateDBSubnetB"}, { "Ref": "PrivateDBSubnetC"}]
+      }
+    },
+
     "DBCluster": {
       "Type": "AWS::RDS::DBCluster",
       "Properties": {
@@ -222,6 +568,7 @@
         "EngineVersion": "5.7.mysql_aurora.2.04.7",
         "MasterUsername": { "Ref": "DBUser" },
         "MasterUserPassword": { "Ref": "DBRootPassword" },
+        "DBSubnetGroupName": { "Ref": "DBSubnetGroup" },
         "VpcSecurityGroupIds": [{ "Fn::GetAtt": ["DBSecurityGroup", "GroupId"]}]
       }
     },
@@ -239,6 +586,7 @@
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
         "GroupDescription": "Enable access to SQL connect",
+        "VpcId": { "Ref": "VPC" },
         "SecurityGroupIngress": [
           { "IpProtocol": "tcp", "FromPort": "3306", "ToPort": "3306", "SourceSecurityGroupId": { "Fn::GetAtt": ["InstanceSecurityGroup", "GroupId"] }}
         ]
@@ -416,6 +764,7 @@
         "InstanceType": { "Ref": "InstanceType" },
         "SecurityGroupIds": [ { "Fn::GetAtt": ["InstanceSecurityGroup", "GroupId"] } ],
         "KeyName": { "Ref": "KeyName" },
+        "SubnetId": { "Ref": "PrivateSubnetA" },
         "UserData": { "Fn::Base64": { "Fn::Join": ["", [
           "#!/bin/bash -xe\n",
           "yum update -y aws-cfn-bootstrap\n",
@@ -539,7 +888,7 @@
     "WebServerGroup": {
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "Properties": {
-        "VPCZoneIdentifier": { "Ref": "Subnets" },
+        "VPCZoneIdentifier": [{ "Ref": "PrivateSubnetA" }, { "Ref": "PrivateSubnetB" }, { "Ref": "PrivateSubnetC" }],
         "LaunchConfigurationName": { "Ref": "LaunchConfig"},
         "MinSize": "2",
         "MaxSize": "2",
@@ -590,7 +939,7 @@
     "ApplicationLoadBalancer": {
       "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "Properties": {
-        "Subnets": {"Ref": "Subnets"},
+        "Subnets":[{ "Ref": "PrivateSubnetA" }, { "Ref": "PrivateSubnetB" }, { "Ref": "PrivateSubnetC" }],
         "SecurityGroups": [{"Ref": "ALBSecurityGroup"}]
       }
     },
@@ -617,7 +966,7 @@
         "Port": 80,
         "Protocol": "HTTP",
         "UnhealthyThresholdCount": 5,
-        "VpcId": {"Ref": "VpcId"}
+        "VpcId": {"Ref": "VPC"}
       }
     },
 
@@ -636,7 +985,7 @@
           "ToPort": "22",
           "CidrIp": { "Ref": "SSHLocation" }
         }],
-        "VpcId": { "Ref": "VpcId" }
+        "VpcId": { "Ref": "VPC" }
       }
     },
 
@@ -650,7 +999,7 @@
           "ToPort": "80",
           "CidrIp": "0.0.0.0/0"
         }],
-        "VpcId": { "Ref": "VpcId" }
+        "VpcId": { "Ref": "VPC" }
       }
     }
   },
